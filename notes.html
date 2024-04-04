@@ -1,0 +1,195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Notes</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f0f0f0;
+    }
+    
+    .container {
+        max-width: 800px;
+        margin: 20px auto;
+        padding: 20px;
+        background-color: #fff;
+        border-radius: 10px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+    
+    .note {
+        background-color: #ffd700;
+        padding: 10px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+    
+    .note textarea {
+        width: 100%;
+        height: 350px; /* Set your desired height */
+        border: none;
+        resize: none;
+        overflow: hidden;
+        font-size: 16px;
+    }
+    
+    .note .delete-btn {
+        cursor: pointer;
+        float: right;
+        border: none;
+        background: none;
+        color: #333;
+    }
+
+    .saved-notes {
+        margin-top: 20px;
+    }
+
+    .saved-notes h2 {
+        margin-bottom: 10px;
+    }
+
+    .saved-note {
+        border: 1px solid #ccc;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+    }
+
+    .saved-note:hover {
+        background-color: #f0f0f0;
+    }
+
+    .delete-saved-note {
+        cursor: pointer;
+        float: right;
+        color: #ff0000;
+    }
+</style>
+</head>
+<body>
+<div class="container">
+    <div id="notes-container"></div>
+    <button id="save-btn">Save Note</button>
+    <button id="add-btn">Add Note</button>
+    <div class="saved-notes" id="saved-notes-container">
+        <h2>Saved</h2>
+    </div>
+</div>
+<script>
+    const notesContainer = document.getElementById('notes-container');
+    const addBtn = document.getElementById('add-btn');
+    const saveBtn = document.getElementById('save-btn');
+    const savedNotesContainer = document.getElementById('saved-notes-container');
+
+    // Load existing notes from localStorage
+    const savedNotes = JSON.parse(localStorage.getItem('stickyNotes')) || [];
+    const savedList = JSON.parse(localStorage.getItem('savedList')) || [];
+
+    savedNotes.forEach(noteText => {
+        createNoteElement(noteText);
+    });
+
+    savedList.forEach(savedItem => {
+        createSavedNoteElement(savedItem);
+    });
+
+    // Function to create a new note element
+    function createNoteElement(text) {
+        const note = document.createElement('div');
+        note.classList.add('note');
+        note.innerHTML = `
+            <textarea>${text}</textarea>
+            <button class="delete-btn">Delete</button>
+        `;
+        notesContainer.appendChild(note);
+
+        const textarea = note.querySelector('textarea');
+        const deleteBtn = note.querySelector('.delete-btn');
+
+        textarea.addEventListener('input', () => {
+            saveNotes();
+        });
+
+        deleteBtn.addEventListener('click', () => {
+            notesContainer.removeChild(note);
+            saveNotes();
+        });
+    }
+
+    // Function to create a new saved note element
+    function createSavedNoteElement(savedItem) {
+        const savedNote = document.createElement('div');
+        savedNote.classList.add('saved-note');
+        savedNote.textContent = `${savedItem.name} - Added: ${savedItem.dateAdded} - Updated: ${savedItem.dateUpdated}`;
+        savedNotesContainer.appendChild(savedNote);
+
+        const deleteSavedNoteBtn = document.createElement('span');
+        deleteSavedNoteBtn.classList.add('delete-saved-note');
+        deleteSavedNoteBtn.innerHTML = '&#10006;';
+
+        savedNote.appendChild(deleteSavedNoteBtn);
+
+        savedNote.addEventListener('click', () => {
+            notesContainer.innerHTML = ''; // Clear current notes
+            savedItem.notes.forEach(noteText => {
+                createNoteElement(noteText);
+            });
+        });
+
+        deleteSavedNoteBtn.addEventListener('click', (event) => {
+            event.stopPropagation(); // Prevents the click event from bubbling up to savedNote click event
+            const index = savedList.findIndex(item => item.name === savedItem.name);
+            if (index !== -1) {
+                savedList.splice(index, 1);
+                localStorage.setItem('savedList', JSON.stringify(savedList));
+                savedNotesContainer.removeChild(savedNote);
+            }
+        });
+    }
+
+    // Function to save notes to localStorage
+    function saveNotes() {
+        const notes = Array.from(notesContainer.querySelectorAll('.note textarea')).map(textarea => textarea.value);
+        localStorage.setItem('stickyNotes', JSON.stringify(notes));
+    }
+
+    // Function to save current note to a list with a name
+    saveBtn.addEventListener('click', () => {
+        const noteTexts = Array.from(notesContainer.querySelectorAll('.note textarea')).map(textarea => textarea.value);
+        const listName = prompt("Enter a name for the list:");
+        if (listName) {
+            const currentDate = new Date();
+            const formattedDate = `${currentDate.getMonth() + 1}/${currentDate.getDate()}/${currentDate.getFullYear()}`;
+            const existingIndex = savedList.findIndex(item => item.name === listName);
+            if (existingIndex !== -1) {
+                savedList[existingIndex].notes = noteTexts;
+                savedList[existingIndex].dateUpdated = formattedDate;
+                localStorage.setItem('savedList', JSON.stringify(savedList));
+            } else {
+                const savedItem = {
+                    name: listName,
+                    notes: noteTexts,
+                    dateAdded: formattedDate,
+                    dateUpdated: formattedDate
+                };
+                savedList.push(savedItem);
+                localStorage.setItem('savedList', JSON.stringify(savedList));
+                createSavedNoteElement(savedItem);
+            }
+        }
+    });
+
+    addBtn.addEventListener('click', () => {
+        createNoteElement('');
+    });
+</script>
+</body>
+</html>
